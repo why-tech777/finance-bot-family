@@ -1,0 +1,47 @@
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from config import ALLOWED_USERS, DAILY_REPORT_HOUR
+from database import get_today_transactions
+from datetime import datetime
+import pytz
+
+tz = pytz.timezone("Europe/Moscow")
+
+
+def setup(bot):
+    scheduler = AsyncIOScheduler(timezone=tz)
+
+    async def daily_summary():
+        today = datetime.now(tz).strftime("%Y-%m-%d")
+        rows  = await get_today_transactions(today)
+
+        if not rows:
+            text = f"📅 <b>Сводка за {today}</b>\n\nСегодня операций не было."
+        else:
+            income_total  = sum(r[4] for r in rows if r[1] == "income")
+            expense_total = sum(r[4] for r in rows if r[1] == "expense")
+            lines = [f"📅 <b>Сводка за {today}</b>\n"]
+
+            if income_total:
+                lines.append(f"➕ Пополнения: <b>{income_total:,.2f} ₽</b>")
+            if expense_total:
+                lines.append(f"➖ Расходы:    <b>{expense_total:,.2f} ₽</b>")
+            lines.append(f"💰 Итог дня:   <b>{income_total - expense_total:,.2f} ₽</b>\n")
+            lines.append("<b>Детали:</b>")
+
+            for user_name, op_type, source, category, amount, comment in rows:
+                icon = "➕" if op_type == "income" else "➖"
+                cat  = f" [{category}]" if category else ""
+                cmt  = f" — {comment}" if comment else ""
+                lines.append(f"  {icon} {user_name}: {amount:,.2f} ₽  {source}{cat}{cmt}")
+
+            text = "\n".join(lines)
+
+        for uid in ALLOWED_USERS:
+            try:
+                await bot.send_message(uid, text, parse_mode="HTML")
+            except Exception:
+                pass
+
+    scheduler.add_job(daily_summary, "cron", hour=DAILY_REPORT_HOUR, minute=0)
+    scheduler.start()
+    return scheduler
