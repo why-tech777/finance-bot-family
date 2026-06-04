@@ -1,14 +1,13 @@
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
-from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
+from datetime import datetime
+import pytz
 
 from config import ALLOWED_USERS
 from database import add_transaction
 from keyboards.menu import menu
-
-from datetime import datetime
-import pytz
 
 router = Router()
 tz = pytz.timezone("Europe/Moscow")
@@ -17,7 +16,13 @@ transfer_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="💳 → 💵")],
         [KeyboardButton(text="💵 → 💳")],
+        [KeyboardButton(text="⬅️ Назад")]
     ],
+    resize_keyboard=True,
+)
+
+back_kb = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text="⬅️ Назад")]],
     resize_keyboard=True,
 )
 
@@ -26,50 +31,52 @@ class TransferStates(StatesGroup):
     amount = State()
 
 @router.message(F.text == "🔄 Перевод")
-async def transfer_start(message: Message, state: FSMContext):
-    if message.from_user.id not in ALLOWED_USERS:
-        return
+async def start_transfer(message: Message, state: FSMContext):
     await state.set_state(TransferStates.direction)
-    await message.answer("Выбери направление перевода:", reply_markup=transfer_kb)
+    await message.answer("Выберите направление перевода:", reply_markup=transfer_kb)
+
+@router.message(F.text == "⬅️ Назад")
+async def back(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("Главное меню", reply_markup=menu)
 
 @router.message(TransferStates.direction)
-async def transfer_direction(message: Message, state: FSMContext):
+async def direction(message: Message, state: FSMContext):
     if message.text not in ("💳 → 💵", "💵 → 💳"):
-        await message.answer("Выбери вариант кнопкой.")
         return
 
     await state.update_data(direction=message.text)
     await state.set_state(TransferStates.amount)
-    await message.answer("Введите сумму перевода:")
+    await message.answer("Введите сумму:", reply_markup=back_kb)
 
 @router.message(TransferStates.amount)
-async def transfer_amount(message: Message, state: FSMContext):
+async def amount(message: Message, state: FSMContext):
     try:
-        amount = float(message.text.replace(",", ".").replace(" ", ""))
-        if amount <= 0:
-            raise ValueError
-    except ValueError:
+        amount = float(message.text.replace(",", "."))
+    except:
         await message.answer("Введите корректную сумму.")
         return
 
     data = await state.get_data()
-    uid = message.from_user.id
-    name = ALLOWED_USERS[uid]
-    now = datetime.now(tz).isoformat()
 
     if data["direction"] == "💳 → 💵":
-        from_source = "Карта"
-        to_source = "Наличные"
+        source = "Наличные"
     else:
-        from_source = "Наличные"
-        to_source = "Карта"
+        source = "Карта"
 
-    await add_transaction(uid, name, "expense", from_source, amount, "Перевод", "Перевод между счетами", now)
-    await add_transaction(uid, name, "income", to_source, amount, None, "Перевод между счетами", now)
-
-    await message.answer(
-        f"✅ Перевод выполнен\n\n{from_source} → {to_source}\nСумма: {amount:,.2f} ₽",
-        reply_markup=menu
+    await add_transaction(
+        message.from_user.id,
+        ALLOWED_USERS[message.from_user.id],
+        "transfer",
+        source,
+        amount,
+        "Перевод",
+        "Перевод между счетами",
+        datetime.now(tz).isoformat()
     )
 
     await state.clear()
+    await message.answer(
+        f"✅ Перевод выполнен на сумму {amount:,.2f} ₽",
+        reply_markup=menu
+    )
