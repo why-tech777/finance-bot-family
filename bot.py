@@ -12,6 +12,7 @@ from handlers.income import router as income_router
 from handlers.expense import router as expense_router
 from handlers.history import router as history_router
 from handlers.reports import router as reports_router
+from handlers.transfer import router as transfer_router
 
 from scheduler import setup
 
@@ -42,6 +43,7 @@ dp.include_router(income_router)
 dp.include_router(expense_router)
 dp.include_router(history_router)
 dp.include_router(reports_router)
+dp.include_router(transfer_router)
 
 
 # -------------------------
