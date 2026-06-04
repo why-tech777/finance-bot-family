@@ -5,7 +5,6 @@ menu = ReplyKeyboardMarkup(
         [KeyboardButton(text="💰 Баланс")],
         [KeyboardButton(text="➕ Пополнить")],
         [KeyboardButton(text="➖ Расход")],
-        [KeyboardButton(text="🔄 Перевод")],
         [KeyboardButton(text="📜 История")],
         [KeyboardButton(text="📊 Отчёт")],
     ],
