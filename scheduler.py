@@ -26,10 +26,25 @@ def setup(bot):
             if expense_total:
                 lines.append(f"➖ Расходы:    <b>{expense_total:,.2f} ₽</b>")
             lines.append(f"💰 Итог дня:   <b>{income_total - expense_total:,.2f} ₽</b>\n")
+            transfer_in = sum(r[4] for r in rows if r[1] == "transfer_in")
+            transfer_out = sum(r[4] for r in rows if r[1] == "transfer_out")
+
+            if transfer_in or transfer_out:
+                lines.append(f"🔄 Переводы: <b>{max(transfer_in, transfer_out):,.2f} ₽</b>")
+
             lines.append("<b>Детали:</b>")
 
             for user_name, op_type, source, category, amount, comment in rows:
-                icon = "➕" if op_type == "income" else "➖"
+                if op_type == "income":
+                    icon = "➕"
+                elif op_type == "expense":
+                    icon = "➖"
+                elif op_type == "transfer_in":
+                    icon = "⬅️"
+                elif op_type == "transfer_out":
+                    icon = "➡️"
+                else:
+                    icon = "🔄"
                 cat  = f" [{category}]" if category else ""
                 cmt  = f" — {comment}" if comment else ""
                 lines.append(f"  {icon} {user_name}: {amount:,.2f} ₽  {source}{cat}{cmt}")

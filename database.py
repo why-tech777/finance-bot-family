@@ -117,10 +117,10 @@ async def get_monthly_report(year: int, month: int):
 
         income_total  = await _sum("income")
         expense_total = await _sum("expense")
-        card_income   = await _sum("income",  "Карта")
-        card_expense  = await _sum("expense", "Карта")
-        cash_income   = await _sum("income",  "Наличные")
-        cash_expense  = await _sum("expense", "Наличные")
+        card_income   = await _sum("income", "Карта") + await _sum("transfer_in", "Карта")
+        card_expense  = await _sum("expense", "Карта") + await _sum("transfer_out", "Карта")
+        cash_income   = await _sum("income", "Наличные") + await _sum("transfer_in", "Наличные")
+        cash_expense  = await _sum("expense", "Наличные") + await _sum("transfer_out", "Наличные")
 
         cur = await db.execute(
             """SELECT category, COALESCE(SUM(amount),0)
