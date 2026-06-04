@@ -63,10 +63,10 @@ async def get_balance():
 
         total_inc  = await _sum("income")
         total_exp  = await _sum("expense")
-        card_inc   = await _sum("income",  "Карта") + await _sum("transfer", "Карта")
-        card_exp   = await _sum("expense", "Карта")
-        cash_inc   = await _sum("income",  "Наличные") + await _sum("transfer", "Наличные")
-        cash_exp   = await _sum("expense", "Наличные")
+        card_inc   = await _sum("income", "Карта") + await _sum("transfer_in", "Карта")
+        card_exp   = await _sum("expense", "Карта") + await _sum("transfer_out", "Карта")
+        cash_inc   = await _sum("income", "Наличные") + await _sum("transfer_in", "Наличные")
+        cash_exp   = await _sum("expense", "Наличные") + await _sum("transfer_out", "Наличные")
 
     return (
         total_inc - total_exp,

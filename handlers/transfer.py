@@ -1,10 +1,10 @@
+
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from datetime import datetime
 import pytz
-
 from config import ALLOWED_USERS
 from database import add_transaction
 from keyboards.menu import menu
@@ -12,19 +12,15 @@ from keyboards.menu import menu
 router = Router()
 tz = pytz.timezone("Europe/Moscow")
 
-transfer_kb = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="💳 → 💵")],
-        [KeyboardButton(text="💵 → 💳")],
-        [KeyboardButton(text="⬅️ Назад")]
-    ],
-    resize_keyboard=True,
-)
+transfer_kb = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text="💳 → 💵")],
+    [KeyboardButton(text="💵 → 💳")],
+    [KeyboardButton(text="⬅️ Назад")]
+], resize_keyboard=True)
 
-back_kb = ReplyKeyboardMarkup(
-    keyboard=[[KeyboardButton(text="⬅️ Назад")]],
-    resize_keyboard=True,
-)
+back_kb = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text="⬅️ Назад")]
+], resize_keyboard=True)
 
 class TransferStates(StatesGroup):
     direction = State()
@@ -44,7 +40,6 @@ async def back(message: Message, state: FSMContext):
 async def direction(message: Message, state: FSMContext):
     if message.text not in ("💳 → 💵", "💵 → 💳"):
         return
-
     await state.update_data(direction=message.text)
     await state.set_state(TransferStates.amount)
     await message.answer("Введите сумму:", reply_markup=back_kb)
@@ -60,23 +55,18 @@ async def amount(message: Message, state: FSMContext):
     data = await state.get_data()
 
     if data["direction"] == "💳 → 💵":
-        source = "Наличные"
+        from_source = "Карта"
+        to_source = "Наличные"
     else:
-        source = "Карта"
+        from_source = "Наличные"
+        to_source = "Карта"
 
-    await add_transaction(
-        message.from_user.id,
-        ALLOWED_USERS[message.from_user.id],
-        "transfer",
-        source,
-        amount,
-        "Перевод",
-        "Перевод между счетами",
-        datetime.now(tz).isoformat()
-    )
+    now = datetime.now(tz).isoformat()
+    uid = message.from_user.id
+    uname = ALLOWED_USERS[uid]
+
+    await add_transaction(uid, uname, "transfer_out", from_source, amount, "Перевод", "Перевод", now)
+    await add_transaction(uid, uname, "transfer_in", to_source, amount, "Перевод", "Перевод", now)
 
     await state.clear()
-    await message.answer(
-        f"✅ Перевод выполнен на сумму {amount:,.2f} ₽",
-        reply_markup=menu
-    )
+    await message.answer("✅ Перевод выполнен", reply_markup=menu)
